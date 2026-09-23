@@ -20,6 +20,7 @@ jobs:
     env:
       TZ: Asia/Shanghai
       JOBS: '2'
+      CCACHE_DIR: /home/runner/.cache/ccache
 
     steps:
       - name: Checkout build project
@@ -49,7 +50,20 @@ jobs:
             exit 1
           fi
           mkdir -p logs
+          mkdir -p "$CCACHE_DIR" "$HOME/openwrt-build/source-cache"
+          ccache --max-size=5G
           echo "OPENWRT_DIR=$HOME/openwrt-build/openwrt" >> "$GITHUB_ENV"
+
+      - name: Restore OpenWrt download and compiler caches
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            /home/runner/openwrt-build/openwrt/dl
+            /home/runner/openwrt-build/source-cache
+            /home/runner/.cache/ccache
+          key: openwrt-x86_64-v25.12.5-${{ hashFiles('versions.env', 'scripts/source-locks.sh', 'config/xiaotan.config') }}-${{ github.run_id }}
+          restore-keys: |
+            openwrt-x86_64-v25.12.5-${{ hashFiles('versions.env', 'scripts/source-locks.sh', 'config/xiaotan.config') }}-
 
       - name: Fetch pinned OpenWrt release
         run: |
