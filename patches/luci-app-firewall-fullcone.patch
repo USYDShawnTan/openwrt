@@ -1,0 +1,37 @@
+--- a/htdocs/luci-static/resources/view/firewall/zones.js
++++ b/htdocs/luci-static/resources/view/firewall/zones.js
+@@ -56,6 +56,12 @@
+ 
+ 		o = s.option(form.Flag, 'drop_invalid', _('Drop invalid packets'));
+ 
++		if (fw4) {
++			o = s.option(form.Flag, 'fullcone', _('FullCone NAT（全锥形 NAT）'),
++				_('全局开关；还需在执行地址伪装的出口区域中启用。旁路由开启此项不会改变上游路由器的 NAT 类型。'));
++			o.default = '0';
++		}
++
+ 		let p = [
+ 			s.option(form.ListValue, 'input', _('Input')),
+ 			s.option(form.ListValue, 'output', _('Output')),
+@@ -179,6 +185,21 @@
+ 		o = s.taboption('general', form.Flag, 'mtu_fix', _('MSS clamping'));
+ 		o.modalonly = true;
+ 
++		if (fw4) {
++			o = s.taboption('general', form.Flag, 'fullcone', _('FullCone NAT（全锥形 NAT）'),
++				_('需要开启全局 FullCone 和本区域的地址伪装。不要仅为开启 FullCone 而给 LAN 增加 NAT。'));
++			o.depends('masq', '1');
++			o.depends('masq6', '1');
++			o.modalonly = true;
++			o = s.taboption('advanced', form.MultiValue, 'fullcone_proto', _('FullCone 协议'),
++				_('建议仅选择 UDP；留空表示不限制协议。'));
++			o.value('udp', _('UDP'));
++			o.value('tcp', _('TCP'));
++			o.depends('fullcone', '1');
++			o.modalonly = true;
++			o.optional = true;
++		}
++
+ 		o = s.taboption('general', widgets.NetworkSelect, 'network', _('Covered networks'));
+ 		o.modalonly = true;
+ 		o.multiple = true;

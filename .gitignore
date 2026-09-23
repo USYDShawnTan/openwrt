@@ -1,0 +1,22 @@
+dist/
+*.img
+*.img.gz
+*.vhdx
+
+# 本地备份、缓存和日志，不属于构建源码。
+.backup-*/
+.codex-backup-*/
+source-cache/
+openwrt-build/
+dl/
+.ccache/
+build_dir/
+staging_dir/
+*.log
+*.part
+.DS_Store
+
+# 本地凭据文件；versions.env 是需跟踪的版本清单。
+.env
+.env.local
+.env.*.local

@@ -1,0 +1,113 @@
+name: Build OpenWrt x86-64
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openwrt-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash
+    env:
+      TZ: Asia/Shanghai
+      JOBS: '2'
+
+    steps:
+      - name: Checkout build project
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Prepare hosted runner
+        run: |
+          set -euo pipefail
+          # Only remove unused SDKs on this disposable GitHub-hosted runner.
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+            gettext git libncurses-dev libssl-dev python3 python3-setuptools \
+            python3-pyelftools rsync swig unzip zlib1g-dev file wget curl \
+            ca-certificates subversion patch time xsltproc libelf-dev \
+            autoconf automake libtool pkgconf cmake ninja-build ccache \
+            libgnutls28-dev liblzma-dev libzstd-dev lld llvm \
+            qemu-utils zstd xz-utils jq
+          df -h "$GITHUB_WORKSPACE"
+          free_kib=$(df -Pk "$GITHUB_WORKSPACE" | awk 'NR == 2 {print $4}')
+          if (( free_kib < 30 * 1024 * 1024 )); then
+            echo '::error::At least 30 GiB of free space is required before building.'
+            exit 1
+          fi
+          mkdir -p logs
+          echo "OPENWRT_DIR=$HOME/openwrt-build/openwrt" >> "$GITHUB_ENV"
+
+      - name: Fetch pinned OpenWrt release
+        run: |
+          set -euo pipefail
+          source versions.env
+          git clone --depth 1 --branch "$OPENWRT_VERSION" \
+            https://github.com/openwrt/openwrt.git "$OPENWRT_DIR"
+          {
+            echo "Project commit: $GITHUB_SHA"
+            echo "OpenWrt version: $OPENWRT_VERSION"
+            git -C "$OPENWRT_DIR" rev-parse HEAD
+          } | tee logs/source-revisions.txt
+
+      - name: Build firmware using the existing scripts
+        run: |
+          set -euo pipefail
+          # This prepares feeds, applies all local patches, downloads and builds.
+          bash scripts/build-local.sh "$OPENWRT_DIR" 2>&1 | tee logs/build.log
+
+      - name: Convert and verify Hyper-V image
+        run: |
+          set -euo pipefail
+          image=dist/openwrt-x86-64-generic-squashfs-combined-efi.img.gz
+          raw_image=dist/openwrt-x86-64-generic-squashfs-combined-efi.img
+          vhdx=dist/openwrt-x86-64-generic-squashfs-combined-efi.vhdx
+          gzip -t "$image"
+          gzip -dc "$image" > "$raw_image"
+          qemu-img convert -f raw -O vhdx -o subformat=dynamic "$raw_image" "$vhdx"
+          qemu-img check "$vhdx"
+          qemu-img compare -f raw -F vhdx "$raw_image" "$vhdx"
+          cp "$OPENWRT_DIR/.config" dist/build.config
+          cp "$OPENWRT_DIR/bin/targets/x86/64/openwrt-x86-64-generic.manifest" dist/
+          cp logs/source-revisions.txt dist/
+          (cd dist && sha256sum ./*.img ./*.img.gz ./*.vhdx > SHA256SUMS)
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: openwrt-x86-64-${{ github.run_number }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p logs
+          df -h > logs/disk-usage.txt
+          if [[ -n "${OPENWRT_DIR:-}" && -f "$OPENWRT_DIR/.config" ]]; then
+            cp "$OPENWRT_DIR/.config" logs/build.config
+          fi
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: openwrt-build-logs-${{ github.run_number }}
+          path: logs/
+          if-no-files-found: warn
+          retention-days: 14

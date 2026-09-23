@@ -1,0 +1,33 @@
+--- a/luasrc/model/cbi/argon-config.lua
++++ b/luasrc/model/cbi/argon-config.lua
+@@ -1,6 +1,5 @@
+ local nxfs = require 'nixio.fs'
+ local wa = require 'luci.tools.webadmin'
+-local opkg = require 'luci.model.ipkg'
+ local sys = require 'luci.sys'
+ local http = require 'luci.http'
+ local nutil = require 'nixio.util'
+@@ -7,12 +6,12 @@
+ local name = 'argon'
+ local uci = require 'luci.model.uci'.cursor()
+ 
+-local fstat = nxfs.statvfs(opkg.overlay_root())
++local fstat = nxfs.statvfs('/www/luci-static/argon') or nxfs.statvfs('/')
+ local space_total = fstat and fstat.blocks or 0
+ local space_free = fstat and fstat.bfree or 0
+ local space_used = space_total - space_free
+ 
+-local free_byte = space_free * fstat.frsize
++local free_byte = space_free * (fstat and fstat.frsize or 0)
+ 
+ local primary, dark_primary, blur_radius, blur_radius_dark, blur_opacity, mode
+ if nxfs.access('/etc/config/argon') then
+@@ -87,1 +86,1 @@
+-o = s:option(Value, 'blur', translate('[Light mode] Frosted Glass Radius'), translate('Larger value will more blurred ; ( Suggest:  clear: 1 or blur preset: 10 )'))
++o = s:option(Value, 'blur', translate('[Light mode] Frosted Glass Radius'), translate('Larger value will more blurred ; ( Suggest: clear: 1 or blur preset: 10 )'))
+@@ -105,1 +104,1 @@
+-o = s:option(Value, 'blur_dark', translate('[Dark mode] Frosted Glass Radius'), translate('Larger value will more blurred ; ( Suggest:  clear: 1 or blur preset: 10 )'))
++o = s:option(Value, 'blur_dark', translate('[Dark mode] Frosted Glass Radius'), translate('Larger value will more blurred ; ( Suggest: clear: 1 or blur preset: 10 )'))
+@@ -124,1 +123,1 @@
+-ful = SimpleForm('upload', translate('Upload  (Free: ') .. wa.byte_format(free_byte) .. ')', translate("You can upload files such as jpg,png,gif,mp4,webm files, To change the login page background."))
++ful = SimpleForm('upload', translate('Upload (Free:') .. ' ' .. wa.byte_format(free_byte) .. ')', translate("You can upload files such as jpg,png,gif,mp4,webm files, To change the login page background."))

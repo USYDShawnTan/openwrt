@@ -1,0 +1,68 @@
+#!/bin/sh
+# ============================================================
+# Xiaotan OpenWrt 首次启动默认配置
+# 文件位置：files/etc/uci-defaults/99-xiaotan-defaults
+# ============================================================
+# OpenWrt 会在第一次启动时执行 /etc/uci-defaults/*。
+# 脚本 exit 0 后会从 /etc/uci-defaults 删除；原始文件仍可在：
+#   /rom/etc/uci-defaults/99-xiaotan-defaults
+# 看到。
+#
+# 如果你以后 sysupgrade 时“保留配置”，下面的 marker 会避免再次覆盖
+# 你已经手工修改好的网络/LuCI 设置。
+
+# 已经初始化过就退出。
+[ "$(uci -q get system.@system[0].xiaotan_defaults)" = "1" ] && exit 0
+
+# ---------- 这里是最常改的参数 ----------
+LAN_IP='192.168.12.199'
+LAN_NETMASK='255.255.255.0'
+LAN_GATEWAY='192.168.12.1'
+LAN_DNS='192.168.12.1'
+
+# 默认 root 密码。
+# 注意：因为这个脚本会被打进固件，所以密码也会存在于 /rom 中。
+# 自用实验环境可以这样做；公开发布固件时建议删掉或改成首次登录再设置。
+ROOT_PASSWORD='coolopenwrt'
+
+# ---------- 设置 root 密码 ----------
+if [ -n "$ROOT_PASSWORD" ]; then
+    (printf '%s\n' "$ROOT_PASSWORD"; sleep 1; printf '%s\n' "$ROOT_PASSWORD") \
+        | passwd root >/dev/null 2>&1
+fi
+
+# ---------- LAN / 旁路由网络 ----------
+uci -q set network.lan.ipaddr="$LAN_IP"
+uci -q set network.lan.netmask="$LAN_NETMASK"
+uci -q set network.lan.gateway="$LAN_GATEWAY"
+uci -q delete network.lan.dns
+uci -q add_list network.lan.dns="$LAN_DNS"
+
+# 本机作为旁路由/服务节点，不与主路由争 DHCP。
+uci -q set dhcp.lan.ignore='1'
+uci -q set dhcp.lan.dhcpv6='disabled'
+uci -q set dhcp.lan.ra='disabled'
+uci -q set dhcp.lan.ndp='disabled'
+
+# ---------- LuCI 默认界面 ----------
+# 默认简体中文。
+uci -q set luci.main.lang='zh_cn'
+# 默认 Argon 主题。
+uci -q set luci.main.mediaurlbase='/luci-static/argon'
+
+# ---------- 初始化标记 ----------
+# 保存在 system 配置里；保留配置升级时这个值也会保留。
+uci -q set system.@system[0].xiaotan_defaults='1'
+
+# 一次性提交，减少反复写 flash/overlay。
+uci -q commit network
+uci -q commit dhcp
+uci -q commit luci
+uci -q commit system
+
+# OpenWrt 原生软件 Flow Offloading
+uci -q set firewall.@defaults[0].flow_offloading='1'
+uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+uci -q commit firewall
+
+exit 0

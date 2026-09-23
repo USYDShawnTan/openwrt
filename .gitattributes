@@ -1,0 +1,2 @@
+# Unified diff 的上下文空格属于补丁格式，不按源码缩进检查。
+*.patch -whitespace
