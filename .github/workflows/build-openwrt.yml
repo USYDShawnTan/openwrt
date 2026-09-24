@@ -20,7 +20,7 @@ jobs:
     env:
       TZ: Asia/Shanghai
       JOBS: '2'
-      CCACHE_DIR: /home/runner/.cache/ccache
+      CCACHE_DIR: /home/runner/openwrt-build/openwrt/.ccache
 
     steps:
       - name: Checkout build project
@@ -72,7 +72,7 @@ jobs:
           path: |
             /home/runner/openwrt-build/openwrt/dl
             /home/runner/openwrt-build/source-cache
-            /home/runner/.cache/ccache
+            /home/runner/openwrt-build/openwrt/.ccache
           key: openwrt-x86_64-v25.12.5-${{ hashFiles('versions.env', 'scripts/source-locks.sh', 'config/xiaotan.config') }}-${{ github.run_id }}
           restore-keys: |
             openwrt-x86_64-v25.12.5-${{ hashFiles('versions.env', 'scripts/source-locks.sh', 'config/xiaotan.config') }}-

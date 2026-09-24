@@ -80,6 +80,15 @@ export_source_subdir sbwml/openwrt_pkgs \
   sbwml-openwrt-pkgs "$RTP2HTTPD_SOURCE_REF" luci-app-rtp2httpd \
   "$PKG_DIR/luci-app-rtp2httpd"
 
+
+# ---------- 本地自有包：M78 Accelerator x86_64 ----------
+# 包源由 scripts/import-m78-ipk.sh 从原始 IPK 精简生成。
+M78_LOCAL="$ROOT_DIR/packages/m78-x86"
+if [[ -d "$M78_LOCAL" ]]; then
+  rm -rf "$PKG_DIR/luci-app-m78accelerator"
+  cp -a "$M78_LOCAL" "$PKG_DIR/luci-app-m78accelerator"
+fi
+
 echo
 echo "Third-party packages prepared."
 echo "Persistent source cache: $SOURCE_CACHE_DIR"
