@@ -2,6 +2,9 @@ name: Build OpenWrt x86-64
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/m78-x86-apk
 
 permissions:
   contents: read
@@ -12,6 +15,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build-m78]')
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     defaults:
