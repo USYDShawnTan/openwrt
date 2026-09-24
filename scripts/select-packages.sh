@@ -102,6 +102,19 @@ cfg_e PACKAGE_luci-app-rtp2httpd
 cfg_e PACKAGE_luci-i18n-rtp2httpd-zh-cn
 cfg_d PACKAGE_ffmpeg
 
+# ---------- M78 Accelerator ----------
+# 只在 x86_64 主程序已经通过 import-m78-ipk.sh 导入时启用，
+# 避免仓库尚未 vendoring 二进制时影响正常固件构建。
+M78_BIN="package/xiaotan/luci-app-m78accelerator/files/usr/bin/netflow_x86_64"
+if [[ -x "$M78_BIN" ]]; then
+  cfg_e PACKAGE_luci-app-m78accelerator
+  M78_ENABLED=1
+else
+  cfg_d PACKAGE_luci-app-m78accelerator
+  M78_ENABLED=0
+  echo "M78 Accelerator: 未发现 x86_64 二进制，跳过；运行 scripts/import-m78-ipk.sh 后会自动启用。"
+fi
+
 # ---------- 25.12 软件包管理 ----------
 cfg_e PACKAGE_luci-app-package-manager
 # 旧版 opkg LuCI 不再使用。
@@ -136,6 +149,10 @@ required=(
   PACKAGE_luci-app-rtp2httpd
 )
 
+if [[ "${M78_ENABLED:-0}" == "1" ]]; then
+  required+=(PACKAGE_luci-app-m78accelerator)
+fi
+
 missing=()
 for sym in "${required[@]}"; do
   if ! grep -q "^CONFIG_${sym}=y$" .config; then
@@ -153,4 +170,5 @@ if ((${#missing[@]})); then
 fi
 
 echo "已启用的 Xiaotan 主要软件包："
-grep -E '^CONFIG_PACKAGE_(luci-theme-argon|luci-app-argon-config|luci-app-ttyd|luci-app-diskman|luci-app-cifs-mount|luci-app-samba4|easytier-noweb|luci-app-easytier|adguardhome|luci-app-adguardhome|lucky|luci-app-lucky|luci-app-openclash|kmod-tcp-bbr|luci-app-upnp|luci-app-wol|rtp2httpd|luci-app-rtp2httpd|dnsmasq-full)=y$' .config || true
+grep -E '^CONFIG_PACKAGE_(luci-theme-argon|luci-app-argon-config|luci-app-ttyd|luci-app-diskman|luci-app-cifs-mount|luci-app-samba4|easytier-noweb|luci-app-easytier|adguardhome|luci-app-adguardhome|lucky|luci-app-lucky|luci-app-openclash|luci-app-m78accelerator|kmod-tcp-bbr|luci-app-upnp|luci-app-wol|rtp2httpd|luci-app-rtp2httpd|dnsmasq-full)=y
+ .config || true
