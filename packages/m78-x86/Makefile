@@ -27,6 +27,9 @@ define Package/luci-app-m78accelerator/install
 	$(INSTALL_DIR) $(1)
 	cp -fpR ./files/. $(1)/
 	$(INSTALL_DIR) $(1)/usr/bin
+	chmod 0755 $(1)/usr/bin/netflow_x86_64
+	chmod 0755 $(1)/etc/init.d/netflow
+	chmod 0755 $(1)/etc/uci-defaults/luci-app-netflow
 	ln -sf netflow_x86_64 $(1)/usr/bin/netflow
 endef
 
