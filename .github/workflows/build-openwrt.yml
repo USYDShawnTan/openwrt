@@ -51,7 +51,6 @@ jobs:
           fi
           mkdir -p logs
           mkdir -p "$HOME/openwrt-build/source-cache"
-          ccache --max-size=5G
           echo "OPENWRT_DIR=$HOME/openwrt-build/openwrt" >> "$GITHUB_ENV"
 
       - name: Fetch pinned OpenWrt release
@@ -69,6 +68,7 @@ jobs:
       - name: Prepare OpenWrt ccache directory
         run: |
           mkdir -p "$CCACHE_DIR"
+          ccache --max-size=5G
 
       - name: Restore OpenWrt download and compiler caches
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
