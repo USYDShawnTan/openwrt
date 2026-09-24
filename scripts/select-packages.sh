@@ -106,7 +106,7 @@ cfg_d PACKAGE_ffmpeg
 # 只在 x86_64 主程序已经通过 import-m78-ipk.sh 导入时启用，
 # 避免仓库尚未 vendoring 二进制时影响正常固件构建。
 M78_BIN="package/xiaotan/luci-app-m78accelerator/files/usr/bin/netflow_x86_64"
-if [[ -x "$M78_BIN" ]]; then
+if [[ -f "$M78_BIN" ]]; then
   cfg_e PACKAGE_luci-app-m78accelerator
   M78_ENABLED=1
 else
