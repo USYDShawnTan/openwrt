@@ -170,5 +170,4 @@ if ((${#missing[@]})); then
 fi
 
 echo "已启用的 Xiaotan 主要软件包："
-grep -E '^CONFIG_PACKAGE_(luci-theme-argon|luci-app-argon-config|luci-app-ttyd|luci-app-diskman|luci-app-cifs-mount|luci-app-samba4|easytier-noweb|luci-app-easytier|adguardhome|luci-app-adguardhome|lucky|luci-app-lucky|luci-app-openclash|luci-app-m78accelerator|kmod-tcp-bbr|luci-app-upnp|luci-app-wol|rtp2httpd|luci-app-rtp2httpd|dnsmasq-full)=y
- .config || true
+grep -E '^CONFIG_PACKAGE_(luci-theme-argon|luci-app-argon-config|luci-app-ttyd|luci-app-diskman|luci-app-cifs-mount|luci-app-samba4|easytier-noweb|luci-app-easytier|adguardhome|luci-app-adguardhome|lucky|luci-app-lucky|luci-app-openclash|luci-app-m78accelerator|kmod-tcp-bbr|luci-app-upnp|luci-app-wol|rtp2httpd|luci-app-rtp2httpd|dnsmasq-full)=y$' .config || true
