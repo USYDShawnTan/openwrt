@@ -2,6 +2,14 @@ name: Build M78 Zashboard APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - replace-openclash-with-openbox
+    paths:
+      - 'packages/m78-x86/**'
+      - 'scripts/vendor-m78-zashboard.sh'
+      - 'versions.env'
+      - '.github/workflows/build-m78-apk.yml'
   push:
     branches:
       - feat/m78-zashboard
