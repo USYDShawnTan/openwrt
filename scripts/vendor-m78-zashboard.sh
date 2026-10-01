@@ -29,13 +29,21 @@ if ! verify; then
   exit 21
 fi
 
-rm -rf "$TARGET"
-mkdir -p "$TARGET"
-unzip -q "$CACHE_FILE" -d "$TARGET"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+unzip -q "$CACHE_FILE" -d "$TMP_DIR"
 
-if [[ ! -f "$TARGET/index.html" ]]; then
+INDEX_FILE="$(find "$TMP_DIR" -type f -name index.html -print -quit)"
+if [[ -z "$INDEX_FILE" ]]; then
   echo "ERROR: Zashboard archive layout changed: index.html missing" >&2
+  find "$TMP_DIR" -maxdepth 3 -type f | head -n 50 >&2 || true
   exit 22
 fi
 
-echo "Zashboard $ZASHBOARD_VERSION vendored into packages/m78-x86/files/www/zashboard"
+WEB_ROOT="$(dirname "$INDEX_FILE")"
+rm -rf "$TARGET"
+mkdir -p "$TARGET"
+cp -a "$WEB_ROOT/." "$TARGET/"
+
+test -f "$TARGET/index.html"
+echo "Zashboard $ZASHBOARD_VERSION vendored into packages/m78-x86/files/www/zashboard (source: ${WEB_ROOT#"$TMP_DIR"/})"
