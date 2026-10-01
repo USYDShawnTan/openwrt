@@ -1,0 +1,90 @@
+name: Build M78 Zashboard APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/m78-zashboard
+    paths:
+      - 'packages/m78-x86/**'
+      - 'scripts/vendor-m78-zashboard.sh'
+      - 'versions.env'
+      - '.github/workflows/build-m78-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang flex bison g++ gawk gettext git \
+            libncurses-dev libssl-dev python3 python3-setuptools \
+            rsync unzip zlib1g-dev file wget curl ca-certificates \
+            zstd xz-utils jq
+
+      - name: Download OpenWrt SDK
+        run: |
+          set -euo pipefail
+          source versions.env
+          rel="${OPENWRT_VERSION#v}"
+          base="https://downloads.openwrt.org/releases/${rel}/targets/x86/64/"
+          sdk="$(curl -fsSL "$base" | sed -n 's/.*href="\(openwrt-sdk-[^"]*\.tar\.zst\)".*/\1/p' | head -n1)"
+          if [[ -z "$sdk" ]]; then
+            echo "::error::Unable to discover OpenWrt SDK from $base"
+            exit 1
+          fi
+          echo "SDK: $sdk"
+          curl -fL --retry 3 -o /tmp/openwrt-sdk.tar.zst "$base$sdk"
+          mkdir -p "$HOME/sdk"
+          tar --zstd -xf /tmp/openwrt-sdk.tar.zst -C "$HOME/sdk" --strip-components=1
+          echo "SDK_DIR=$HOME/sdk" >> "$GITHUB_ENV"
+
+      - name: Prepare SDK feeds
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          set -euo pipefail
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Vendor Zashboard
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/openwrt-build/source-cache"
+          bash scripts/vendor-m78-zashboard.sh
+          test -f packages/m78-x86/files/www/zashboard/index.html
+
+      - name: Add M78 package
+        run: |
+          set -euo pipefail
+          rm -rf "$SDK_DIR/package/m78-zashboard"
+          cp -a packages/m78-x86 "$SDK_DIR/package/m78-zashboard"
+
+      - name: Build APK
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          set -euo pipefail
+          make defconfig
+          make package/luci-app-m78accelerator/compile -j2 V=s
+          mkdir -p "$GITHUB_WORKSPACE/dist-m78"
+          find bin/packages -type f -name 'luci-app-m78accelerator-*.apk' -exec cp -v {} "$GITHUB_WORKSPACE/dist-m78/" \;
+          test -n "$(find "$GITHUB_WORKSPACE/dist-m78" -type f -name '*.apk' -print -quit)"
+          sha256sum "$GITHUB_WORKSPACE"/dist-m78/*.apk > "$GITHUB_WORKSPACE/dist-m78/SHA256SUMS"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m78-zashboard-apk-${{ github.run_number }}
+          path: dist-m78/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
