@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-m78accelerator
 PKG_VERSION:=3.0.0
-PKG_RELEASE:=202604101735
+PKG_RELEASE:=2026100101
 PKGARCH:=x86_64
 
 include $(INCLUDE_DIR)/package.mk
@@ -12,12 +12,14 @@ define Package/luci-app-m78accelerator
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=M78 Accelerator for OpenWrt (x86_64)
-  DEPENDS:=+luci-base +luci-compat +luci-lua-runtime +curl
+  DEPENDS:=+luci-base +luci-compat +luci-lua-runtime +curl +socat
 endef
 
 define Package/luci-app-m78accelerator/description
  M78 Accelerator client repackaged for OpenWrt 25.12+ APK builds.
  This local variant intentionally supports x86_64 only.
+ Zashboard is bundled as the Mihomo dashboard while M78 remains responsible
+ for account login and subscription refresh.
 endef
 
 define Build/Compile
@@ -29,6 +31,7 @@ define Package/luci-app-m78accelerator/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	chmod 0755 $(1)/usr/bin/netflow_x86_64
 	chmod 0755 $(1)/etc/init.d/netflow
+	chmod 0755 $(1)/etc/init.d/netflow-zashboard
 	chmod 0755 $(1)/etc/uci-defaults/luci-app-netflow
 	ln -sf netflow_x86_64 $(1)/usr/bin/netflow
 endef
@@ -42,12 +45,16 @@ if [ -x /etc/uci-defaults/luci-app-netflow ]; then
 fi
 /etc/init.d/netflow enable 2>/dev/null || true
 /etc/init.d/netflow restart 2>/dev/null || true
+/etc/init.d/netflow-zashboard enable 2>/dev/null || true
+/etc/init.d/netflow-zashboard restart 2>/dev/null || true
 exit 0
 endef
 
 define Package/luci-app-m78accelerator/prerm
 #!/bin/sh
 [ -n "${IPKG_INSTROOT}" ] && exit 0
+/etc/init.d/netflow-zashboard stop 2>/dev/null || true
+/etc/init.d/netflow-zashboard disable 2>/dev/null || true
 /etc/init.d/netflow stop 2>/dev/null || true
 /etc/init.d/netflow disable 2>/dev/null || true
 iptables -t nat -D PREROUTING -j NETFLOW 2>/dev/null || true
