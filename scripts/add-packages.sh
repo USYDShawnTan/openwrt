@@ -38,9 +38,6 @@ export_source_tree EasyTier/luci-app-easytier \
 export_source_tree sirpdboy/luci-app-lucky \
   luci-app-lucky "$LUCKY_VERSION" "$PKG_DIR/lucky-suite"
 
-export_source_subdir vernesong/OpenClash \
-  OpenClash "$OPENCLASH_VERSION" luci-app-openclash \
-  "$PKG_DIR/luci-app-openclash"
 
 # ---------- 无现代 Release：固定 dated snapshot，同样只下载 tarball ----------
 export_source_subdir lisaac/luci-app-diskman \
