@@ -27,6 +27,32 @@ function index()
     entry({"admin", "services", "netflow"}, template("netflow/main"), _("M78加速器"), 80)
     entry({"admin", "services", "netflow", "api"}, call("action_api"), nil)
     entry({"admin", "services", "netflow", "upload_core"}, call("action_upload_core"), nil)
+    entry({"admin", "services", "netflow", "zashboard"}, call("action_zashboard"), _("Zashboard"), 81)
+end
+
+function action_zashboard()
+    local jsonc = require "luci.jsonc"
+    local secret = uci:get("netflow", "config", "api_secret") or "netflow_secret"
+    local bridge_port = "9092"
+
+    http.prepare_content("text/html; charset=utf-8")
+    http.write([[
+<!doctype html>
+<meta charset="utf-8">
+<title>Opening Zashboard...</title>
+<script>
+(function () {
+    var secret = ]] .. jsonc.stringify(secret) .. [[;
+    var target = "/zashboard/#/setup?hostname=" +
+        encodeURIComponent(window.location.hostname) +
+        "&port=]] .. bridge_port .. [[" +
+        "&secret=" + encodeURIComponent(secret) +
+        "&disableUpgradeCore=1&disableTunMode=1";
+    window.location.replace(target);
+})();
+</script>
+<noscript>请启用 JavaScript 后打开 Zashboard。</noscript>
+]])
 end
 
 function action_api()
