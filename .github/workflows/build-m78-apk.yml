@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - replace-openclash-with-openbox
+      - feat/m78-zashboard
     paths:
       - 'packages/m78-x86/**'
       - 'scripts/vendor-m78-zashboard.sh'
@@ -13,6 +14,7 @@ on:
   push:
     branches:
       - feat/m78-zashboard
+      - feat/m78-private-sub
     paths:
       - 'packages/m78-x86/**'
       - 'scripts/vendor-m78-zashboard.sh'
