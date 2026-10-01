@@ -81,7 +81,23 @@ jobs:
         working-directory: ${{ env.SDK_DIR }}
         run: |
           set -euo pipefail
+          printf '%s\n' 'CONFIG_PACKAGE_luci-app-m78accelerator=m' >> .config
           make defconfig
+          grep -q '^CONFIG_PACKAGE_luci-app-m78accelerator=m
+          mkdir -p "$GITHUB_WORKSPACE/dist-m78"
+          find bin/packages -type f -name 'luci-app-m78accelerator-*.apk' -exec cp -v {} "$GITHUB_WORKSPACE/dist-m78/" \;
+          test -n "$(find "$GITHUB_WORKSPACE/dist-m78" -type f -name '*.apk' -print -quit)"
+          sha256sum "$GITHUB_WORKSPACE"/dist-m78/*.apk > "$GITHUB_WORKSPACE/dist-m78/SHA256SUMS"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m78-zashboard-apk-${{ github.run_number }}
+          path: dist-m78/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+ .config
           make package/luci-app-m78accelerator/compile -j2 V=s
           mkdir -p "$GITHUB_WORKSPACE/dist-m78"
           find bin/packages -type f -name 'luci-app-m78accelerator-*.apk' -exec cp -v {} "$GITHUB_WORKSPACE/dist-m78/" \;
