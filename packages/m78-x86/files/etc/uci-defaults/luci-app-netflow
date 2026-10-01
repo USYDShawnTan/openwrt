@@ -48,6 +48,7 @@ if [ ! -f /etc/netflow/.dev_salt ] || [ ! -s /etc/netflow/.dev_salt ]; then
 fi
 
 chmod 755 /etc/init.d/netflow
+chmod 755 /etc/init.d/netflow-zashboard 2>/dev/null || true
 
 if [ ! -x "/usr/bin/netflow" ] && [ -x "/usr/bin/netflow_x86_64" ]; then
     ln -sf /usr/bin/netflow_x86_64 /usr/bin/netflow
@@ -69,5 +70,7 @@ rm -rf /tmp/luci-indexcache /tmp/luci-modulecache
 
 /etc/init.d/netflow enable
 /etc/init.d/netflow start
+/etc/init.d/netflow-zashboard enable 2>/dev/null || true
+/etc/init.d/netflow-zashboard restart 2>/dev/null || true
 
 exit 0
