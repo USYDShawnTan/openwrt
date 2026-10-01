@@ -74,8 +74,8 @@ jobs:
       - name: Add M78 package
         run: |
           set -euo pipefail
-          rm -rf "$SDK_DIR/package/m78-zashboard"
-          cp -a packages/m78-x86 "$SDK_DIR/package/m78-zashboard"
+          rm -rf "$SDK_DIR/package/luci-app-m78accelerator"
+          cp -a packages/m78-x86 "$SDK_DIR/package/luci-app-m78accelerator"
 
       - name: Build APK
         working-directory: ${{ env.SDK_DIR }}
