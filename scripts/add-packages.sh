@@ -82,6 +82,7 @@ export_source_subdir sbwml/openwrt_pkgs \
 # 包源由 scripts/import-m78-ipk.sh 从原始 IPK 精简生成。
 M78_LOCAL="$ROOT_DIR/packages/m78-x86"
 if [[ -d "$M78_LOCAL" ]]; then
+  bash "$ROOT_DIR/scripts/vendor-m78-zashboard.sh"
   rm -rf "$PKG_DIR/luci-app-m78accelerator"
   cp -a "$M78_LOCAL" "$PKG_DIR/luci-app-m78accelerator"
 fi

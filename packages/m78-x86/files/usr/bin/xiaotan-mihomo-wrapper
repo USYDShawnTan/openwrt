@@ -1,0 +1,93 @@
+#!/bin/sh
+set -eu
+
+REAL_MIHOMO="/etc/netflow/mihomo/mihomo"
+STATE_DIR="/etc/netflow/xiaotan"
+WEB_DIR="/www/m78-sub"
+TOKEN_FILE="$STATE_DIR/sub-token"
+CAPTURE_FILE="$STATE_DIR/generated.yaml"
+
+make_token() {
+    mkdir -p "$STATE_DIR"
+    if [ -s "$TOKEN_FILE" ]; then
+        tr -dc 'A-Za-z0-9' < "$TOKEN_FILE" | head -c 64
+        return 0
+    fi
+
+    token=""
+    if [ -c /dev/urandom ]; then
+        if command -v hexdump >/dev/null 2>&1; then
+            token="$(head -c 24 /dev/urandom | hexdump -v -e '24/1 "%02x"')"
+        elif command -v od >/dev/null 2>&1; then
+            token="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+        fi
+    fi
+    [ -n "$token" ] || token="$(date +%s 2>/dev/null || echo 0)$$$(cat /etc/netflow/.dev_salt 2>/dev/null | head -c 32)"
+    token="$(printf '%s' "$token" | tr -dc 'A-Za-z0-9' | head -c 64)"
+    [ -n "$token" ] || token="m78$$"
+
+    umask 077
+    printf '%s\n' "$token" > "$TOKEN_FILE"
+    chmod 600 "$TOKEN_FILE"
+    printf '%s' "$token"
+}
+
+export_proxies() {
+    src="$1"
+    [ -f "$src" ] || return 0
+
+    mkdir -p "$STATE_DIR" "$WEB_DIR"
+    cp "$src" "$CAPTURE_FILE"
+    chmod 600 "$CAPTURE_FILE"
+
+    token="$(make_token)"
+    out="$WEB_DIR/$token.yaml"
+    tmp="$WEB_DIR/.$token.yaml.$$"
+
+    if awk '
+        BEGIN { capture = 0; found = 0 }
+        /^proxies:[[:space:]]*$/ {
+            capture = 1
+            found = 1
+            print
+            next
+        }
+        capture && /^[^[:space:]#][^:]*:[[:space:]]*/ {
+            exit
+        }
+        capture {
+            print
+        }
+        END {
+            if (!found) exit 42
+        }
+    ' "$src" > "$tmp"; then
+        if grep -q '^proxies:[[:space:]]*$' "$tmp" && [ "$(wc -c < "$tmp")" -gt 20 ]; then
+            chmod 644 "$tmp"
+            mv -f "$tmp" "$out"
+            logger -t xiaotan-m78-sub "private proxy subscription updated: /m78-sub/$token.yaml"
+        else
+            rm -f "$tmp"
+            logger -t xiaotan-m78-sub "generated config contained no usable proxies section"
+        fi
+    else
+        rm -f "$tmp"
+        logger -t xiaotan-m78-sub "failed to extract proxies from generated config"
+    fi
+}
+
+config_file=""
+prev=""
+for arg in "$@"; do
+    if [ "$prev" = "-f" ]; then
+        config_file="$arg"
+        break
+    fi
+    prev="$arg"
+done
+
+if [ -n "$config_file" ]; then
+    export_proxies "$config_file"
+fi
+
+exec "$REAL_MIHOMO" "$@"
