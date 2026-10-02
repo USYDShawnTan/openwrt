@@ -14,7 +14,12 @@ uci -q get netflow.v2board >/dev/null || uci set netflow.v2board=v2board
 [ -z "$(uci -q get netflow.config.redir_port)" ] && uci set netflow.config.redir_port='7892'
 [ -z "$(uci -q get netflow.config.dns_port)" ] && uci set netflow.config.dns_port='7874'
 [ -z "$(uci -q get netflow.config.mixed_port)" ] && uci set netflow.config.mixed_port='7890'
-[ -z "$(uci -q get netflow.config.mihomo_path)" ] && uci set netflow.config.mihomo_path='/etc/netflow/mihomo/mihomo'
+CURRENT_MIHOMO_PATH="$(uci -q get netflow.config.mihomo_path 2>/dev/null)"
+case "$CURRENT_MIHOMO_PATH" in
+    ''|/etc/netflow/mihomo/mihomo|/usr/bin/xiaotan-mihomo-wrapper)
+        uci set netflow.config.mihomo_path='/usr/bin/xiaotan-mihomo-wrapper'
+        ;;
+esac
 [ -z "$(uci -q get netflow.config.lan_proxy)" ] && uci set netflow.config.lan_proxy='1'
 [ -z "$(uci -q get netflow.config.ipv6_proxy)" ] && uci set netflow.config.ipv6_proxy='0'
 
@@ -33,6 +38,24 @@ uci commit netflow
 
 mkdir -p /etc/netflow/mihomo
 mkdir -p /etc/netflow/v2board
+mkdir -p /etc/netflow/xiaotan
+mkdir -p /www/m78-sub
+
+# Create a stable private token once. The generated subscription is exposed only
+# under /m78-sub/<token>.yaml; full captured config stays outside /www.
+if [ ! -s /etc/netflow/xiaotan/sub-token ]; then
+    SUB_TOKEN=""
+    if [ -c /dev/urandom ]; then
+        if command -v hexdump >/dev/null 2>&1; then
+            SUB_TOKEN="$(head -c 24 /dev/urandom | hexdump -v -e '24/1 "%02x"')"
+        elif command -v od >/dev/null 2>&1; then
+            SUB_TOKEN="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+        fi
+    fi
+    [ -n "$SUB_TOKEN" ] || SUB_TOKEN="$(date +%s 2>/dev/null || echo 0)-fallback"
+    printf '%s\n' "$SUB_TOKEN" > /etc/netflow/xiaotan/sub-token
+    chmod 600 /etc/netflow/xiaotan/sub-token
+fi
 
 if [ ! -f /etc/netflow/.dev_salt ] || [ ! -s /etc/netflow/.dev_salt ]; then
     if [ -c /dev/urandom ]; then
@@ -48,6 +71,8 @@ if [ ! -f /etc/netflow/.dev_salt ] || [ ! -s /etc/netflow/.dev_salt ]; then
 fi
 
 chmod 755 /etc/init.d/netflow
+chmod 755 /usr/bin/xiaotan-mihomo-wrapper 2>/dev/null || true
+chmod 755 /etc/init.d/netflow-zashboard 2>/dev/null || true
 
 if [ ! -x "/usr/bin/netflow" ] && [ -x "/usr/bin/netflow_x86_64" ]; then
     ln -sf /usr/bin/netflow_x86_64 /usr/bin/netflow
@@ -69,5 +94,7 @@ rm -rf /tmp/luci-indexcache /tmp/luci-modulecache
 
 /etc/init.d/netflow enable
 /etc/init.d/netflow start
+/etc/init.d/netflow-zashboard enable 2>/dev/null || true
+/etc/init.d/netflow-zashboard restart 2>/dev/null || true
 
 exit 0

@@ -27,6 +27,81 @@ function index()
     entry({"admin", "services", "netflow"}, template("netflow/main"), _("M78加速器"), 80)
     entry({"admin", "services", "netflow", "api"}, call("action_api"), nil)
     entry({"admin", "services", "netflow", "upload_core"}, call("action_upload_core"), nil)
+    entry({"admin", "services", "netflow", "zashboard"}, call("action_zashboard"), _("Zashboard"), 81)
+    entry({"admin", "services", "netflow", "subscription"}, call("action_subscription"), _("节点订阅"), 82)
+end
+
+function action_subscription()
+    local token_file = "/etc/netflow/xiaotan/sub-token"
+    local f = io.open(token_file, "r")
+    local token = f and (f:read("*l") or "") or ""
+    if f then f:close() end
+    token = token:gsub("[^%w]", "")
+
+    local exists = false
+    if token ~= "" then
+        local sub = io.open("/www/m78-sub/" .. token .. ".yaml", "r")
+        if sub then
+            exists = true
+            sub:close()
+        end
+    end
+
+    local path = token ~= "" and ("/m78-sub/" .. token .. ".yaml") or ""
+    local jsonc = require "luci.jsonc"
+
+    http.prepare_content("text/html; charset=utf-8")
+    http.write([[
+<!doctype html>
+<meta charset="utf-8">
+<title>M78 私人节点订阅</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:900px;margin:40px auto;padding:0 20px;color:#222}
+.card{border:1px solid #ddd;border-radius:12px;padding:20px}
+code{display:block;padding:12px;background:#f5f5f5;border-radius:8px;word-break:break-all;margin:12px 0}
+button{padding:8px 16px;border:0;border-radius:8px;cursor:pointer}
+.ok{color:#16803a}.wait{color:#a15c00}
+</style>
+<div class="card">
+<h2>M78 私人节点订阅</h2>
+<p>这里只导出 M78 生成配置里的 <b>proxies:</b>，节点名称和套餐信息节点原样保留，不包含 M78 的策略组、规则、DNS 或 TUN 配置。</p>
+<p id="status" class="]] .. (exists and "ok" or "wait") .. [[">]] ..
+        (exists and "订阅已生成。" or "尚未生成订阅。请在 M78 中启动或重启一次代理。") .. [[</p>
+<code id="url"></code>
+<button onclick="navigator.clipboard.writeText(document.getElementById('url').textContent)">复制订阅地址</button>
+</div>
+<script>
+(function(){
+  var path = ]] .. jsonc.stringify(path) .. [[;
+  document.getElementById('url').textContent = path ? (window.location.origin + path) : '尚未生成 token';
+})();
+</script>
+]])
+end
+
+function action_zashboard()
+    local jsonc = require "luci.jsonc"
+    local secret = uci:get("netflow", "config", "api_secret") or "netflow_secret"
+    local bridge_port = "9092"
+
+    http.prepare_content("text/html; charset=utf-8")
+    http.write([[
+<!doctype html>
+<meta charset="utf-8">
+<title>Opening Zashboard...</title>
+<script>
+(function () {
+    var secret = ]] .. jsonc.stringify(secret) .. [[;
+    var target = "/zashboard/#/setup?hostname=" +
+        encodeURIComponent(window.location.hostname) +
+        "&port=]] .. bridge_port .. [[" +
+        "&secret=" + encodeURIComponent(secret) +
+        "&disableUpgradeCore=1&disableTunMode=1";
+    window.location.replace(target);
+})();
+</script>
+<noscript>请启用 JavaScript 后打开 Zashboard。</noscript>
+]])
 end
 
 function action_api()

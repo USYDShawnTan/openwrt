@@ -66,6 +66,7 @@ cp "$ROOT_DIR/config/xiaotan.config" .config
 rm -rf files
 mkdir -p files
 cp -a "$ROOT_DIR/files/." files/
+bash "$ROOT_DIR/scripts/add-openbox.sh" "$OPENWRT_DIR"
 bash "$ROOT_DIR/scripts/select-packages.sh" "$OPENWRT_DIR"
 
 echo

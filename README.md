@@ -1,10 +1,10 @@
-# Xiaotan OpenWrt 本地构建版 v4.5.1
+# Xiaotan OpenWrt 本地构建版 v4.6.0
 
 目标：**稳定、可重复、版本易懂，并减少重复访问 GitHub。**
 
 底座保持 OpenWrt 官方稳定 Release，不维护 OpenWrt 整树 fork；自定义只放在构建脚本、第三方包和少量 patch 上。
 
-## 当前仓库状态（2026-09-23）
+## 当前仓库状态（2026-10-01）
 
 - 本仓库管理 `scripts/`、`config/`、`files/`、`patches/` 和 `versions.env`，不包含 OpenWrt 源码整树、缓存、备份和固件产物。
 - 已包含 rufengsuixing AdGuardHome 插件适配、Argon Config 的 APK/LuCI 兼容与中文修复，以及 FullCone 中文页面和旧 APK 残留处理。
@@ -13,18 +13,16 @@
 - GitHub Actions 工作流见 `.github/workflows/build-openwrt.yml`：手动触发，准备依赖及固定版本源码，再调用现有构建脚本。
 - 当前目标为 x86-64 EFI；其他架构和路由器型号需要重新选择 target/profile，不能直接使用本镜像。
 
-## v4.5.1 变化
+## v4.6.0 变化
 
-在 v4.5 的稳定布局基础上，主要修复第三方源码下载方式：
+在 v4.5.1 的稳定构建链基础上，代理组件由 OpenClash 切换为 Open-Box：
 
-- 不再使用 `git clone --mirror`。
-- OpenClash、Argon、Argon Config、EasyTier、Lucky 等 Release/Tag 直接下载 GitHub source tarball。
-- DiskMan、CIFS Mount、rtp2httpd 包装层、SONiC FullCone 等 snapshot 同样下载固定 ref 的 tarball，不 clone 仓库历史。
-- 持久化缓存改为：`~/openwrt-build/source-cache/`。
-- 下载使用 `curl` 自动重试；失败的 `.part` 文件下次会尝试续传。
-- 支持可选 `GITHUB_PROXY_PREFIX`，默认不使用任何第三方代理。
-- ZIP 内 `scripts/*.sh` 已带可执行权限，正常以 `xiaotan` 用户解压后不需要再 `chmod +x`。
-- 构建开始前检查工程目录、OpenWrt 源码目录和 source-cache 是否对当前用户可写，提前发现 `root:root` 权限问题。
+- 删除 OpenClash 源码导入、版本锁和固件选择项。
+- Open-Box 固定为 `v0.1.271`，构建时校验 SHA256 后直接预装到 `/opt/open-box`。
+- Open-Box 自带的 LuCI 页面、init 脚本与 `open-box` CLI 一并写入 rootfs；首次启动只启用面板，不自动启动代理内核。
+- 固件显式编入 `kmod-tun`、`kmod-nft-queue`、`kmod-nft-nat`、`kmod-veth`、`ip-full`、`ca-bundle`，确保内核模块和自编译 Kernel ABI 完全一致。
+- 恢复 OpenWrt 默认 `dnsmasq`，不再因为 OpenClash 强制 `dnsmasq-full`。
+- M78 Accelerator 的本地 x86_64 包与自动启用逻辑保持不变。
 
 ## 整体架构
 
@@ -37,7 +35,7 @@ OpenWrt v25.12.5 官方 Release
 ├─ kmod-tcp-bbr           OpenWrt 官方
 ├─ SONiC FullCone         固定 2026-08-15 snapshot
 ├─ AdGuard Home           rufengsuixing LuCI 插件（核心由插件管理）
-├─ OpenClash              v0.47.156
+├─ Open-Box               v0.1.271
 ├─ EasyTier               v2.6.4
 ├─ Lucky                  v2.27.2
 └─ Argon                  v2.4.6
@@ -61,7 +59,7 @@ Argon            v2.4.6
 Argon Config     v0.9
 EasyTier         v2.6.4
 Lucky            v2.27.2
-OpenClash        v0.47.156
+Open-Box         v0.1.271
 DiskMan          0.2.13 snapshot
 CIFS Mount       1-r7 snapshot
 rtp2httpd        3.14.2
@@ -131,14 +129,14 @@ export GITHUB_PROXY_PREFIX='https://your-proxy.example/'
 /home/xiaotan/openwrt-build              xiaotan:xiaotan
 /home/xiaotan/openwrt-build/openwrt      xiaotan:xiaotan
 /home/xiaotan/openwrt-build/source-cache xiaotan:xiaotan
-/home/xiaotan/xiaotan-openwrt-local-v4.5.1  xiaotan:xiaotan
+/home/xiaotan/xiaotan-openwrt-local-v4.6.0  xiaotan:xiaotan
 ```
 
 如果之前用 root 解压或构建过，先一次性修正：
 
 ```bash
 sudo chown -R xiaotan:xiaotan ~/openwrt-build
-sudo chown -R xiaotan:xiaotan ~/xiaotan-openwrt-local-v4.5.1
+sudo chown -R xiaotan:xiaotan ~/xiaotan-openwrt-local-v4.6.0
 ```
 
 以后不要使用：
@@ -198,7 +196,7 @@ staging_dir/
 - EasyTier
 - rufengsuixing AdGuardHome LuCI 插件（已适配当前固件）
 - Lucky
-- OpenClash
+- Open-Box（预装到 /opt/open-box，LuCI 面板默认 3036）
 - OpenWrt 原生 Flow Offloading
 - OpenWrt 官方 BBR
 - SONiC FullCone
@@ -211,8 +209,8 @@ staging_dir/
 
 ```bash
 cd ~
-unzip xiaotan-openwrt-local-v4.5.1.zip
-cd ~/xiaotan-openwrt-local-v4.5.1
+unzip xiaotan-openwrt-local-v4.6.0.zip
+cd ~/xiaotan-openwrt-local-v4.6.0
 ```
 
 脚本已带执行权限，直接：
@@ -261,18 +259,13 @@ FullCone proto    游戏/P2P 场景可只开 UDP
 
 ## 以后怎么升级
 
-例如 OpenClash：
+例如 Open-Box：
 
 ```bash
-OPENCLASH_VERSION=v0.47.156
+OPENBOX_VERSION=v0.1.271
+OPENBOX_SHA256=<对应完整 x64 Release 包的 SHA256>
 ```
 
-未来有新的正式 Release，只改成：
+升级时同时更新版本号和 SHA256，然后重新构建并验证。Open-Box 的完整包会进入 `~/openwrt-build/source-cache/open-box/`，版本不变时直接复用缓存。
 
-```bash
-OPENCLASH_VERSION=v0.47.xxx
-```
-
-然后重新构建 → Hyper-V 验证 → 再把它认定为你的稳定版本。
-
-OpenWrt 大版本或小版本升级建议单独开新的 Xiaotan 工程版本，并重新验证 SONiC FullCone、OpenClash、EasyTier、AdGuard Home 和 LuCI。
+OpenWrt 大版本或小版本升级建议单独开新的 Xiaotan 工程版本，并重新验证 SONiC FullCone、Open-Box、EasyTier、AdGuard Home、M78 和 LuCI。

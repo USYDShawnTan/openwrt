@@ -76,11 +76,25 @@ cfg_e PACKAGE_luci-i18n-lucky-zh-cn
 cfg_d PACKAGE_luci-app-ddns
 cfg_d PACKAGE_ddns-scripts
 
-# ---------- OpenClash ----------
-# OpenClash 需要 dnsmasq-full，并使用 LuCI 兼容层。
-cfg_d PACKAGE_dnsmasq
-cfg_e PACKAGE_dnsmasq-full
-cfg_e PACKAGE_luci-app-openclash
+# ---------- Open-Box ----------
+# Open-Box 本体由 scripts/add-openbox.sh 直接预装到 rootfs。
+# 这里固定编入它需要的系统依赖，确保 kmod 与当前自编译内核 ABI 完全一致。
+cfg_e PACKAGE_dnsmasq
+cfg_d PACKAGE_dnsmasq-full
+cfg_e PACKAGE_kmod-tun
+cfg_e PACKAGE_kmod-veth
+
+# 透明代理 / Mihomo / OpenClash / sing-box 共用的 netfilter 能力。
+# nft-tproxy/socket 依赖底层 nf-tproxy/socket；显式选中可确保它们与自编译 Kernel ABI 同源。
+cfg_e PACKAGE_kmod-inet-diag
+cfg_e PACKAGE_kmod-nf-tproxy
+cfg_e PACKAGE_kmod-nf-socket
+cfg_e PACKAGE_kmod-nft-tproxy
+cfg_e PACKAGE_kmod-nft-socket
+cfg_e PACKAGE_kmod-nft-queue
+cfg_e PACKAGE_kmod-nft-nat
+cfg_e PACKAGE_ip-full
+cfg_e PACKAGE_ca-bundle
 
 # ---------- 网络加速 ----------
 # Flow Offloading 是 OpenWrt/firewall4 原生功能，由 uci-defaults 开启。
@@ -140,8 +154,18 @@ required=(
   PACKAGE_luci-app-adguardhome
   PACKAGE_lucky
   PACKAGE_luci-app-lucky
-  PACKAGE_dnsmasq-full
-  PACKAGE_luci-app-openclash
+  PACKAGE_dnsmasq
+  PACKAGE_kmod-tun
+  PACKAGE_kmod-veth
+  PACKAGE_kmod-inet-diag
+  PACKAGE_kmod-nf-tproxy
+  PACKAGE_kmod-nf-socket
+  PACKAGE_kmod-nft-tproxy
+  PACKAGE_kmod-nft-socket
+  PACKAGE_kmod-nft-queue
+  PACKAGE_kmod-nft-nat
+  PACKAGE_ip-full
+  PACKAGE_ca-bundle
   PACKAGE_kmod-tcp-bbr
   PACKAGE_luci-app-upnp
   PACKAGE_luci-app-wol
@@ -170,4 +194,4 @@ if ((${#missing[@]})); then
 fi
 
 echo "已启用的 Xiaotan 主要软件包："
-grep -E '^CONFIG_PACKAGE_(luci-theme-argon|luci-app-argon-config|luci-app-ttyd|luci-app-diskman|luci-app-cifs-mount|luci-app-samba4|easytier-noweb|luci-app-easytier|adguardhome|luci-app-adguardhome|lucky|luci-app-lucky|luci-app-openclash|luci-app-m78accelerator|kmod-tcp-bbr|luci-app-upnp|luci-app-wol|rtp2httpd|luci-app-rtp2httpd|dnsmasq-full)=y$' .config || true
+grep -E '^CONFIG_PACKAGE_(luci-theme-argon|luci-app-argon-config|luci-app-ttyd|luci-app-diskman|luci-app-cifs-mount|luci-app-samba4|easytier-noweb|luci-app-easytier|adguardhome|luci-app-adguardhome|lucky|luci-app-lucky|luci-app-m78accelerator|kmod-tcp-bbr|kmod-tun|kmod-veth|kmod-inet-diag|kmod-nf-tproxy|kmod-nf-socket|kmod-nft-tproxy|kmod-nft-socket|kmod-nft-queue|kmod-nft-nat|ip-full|ca-bundle|luci-app-upnp|luci-app-wol|rtp2httpd|luci-app-rtp2httpd|dnsmasq)=y$' .config || true

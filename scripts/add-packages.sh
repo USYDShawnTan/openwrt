@@ -38,9 +38,6 @@ export_source_tree EasyTier/luci-app-easytier \
 export_source_tree sirpdboy/luci-app-lucky \
   luci-app-lucky "$LUCKY_VERSION" "$PKG_DIR/lucky-suite"
 
-export_source_subdir vernesong/OpenClash \
-  OpenClash "$OPENCLASH_VERSION" luci-app-openclash \
-  "$PKG_DIR/luci-app-openclash"
 
 # ---------- 无现代 Release：固定 dated snapshot，同样只下载 tarball ----------
 export_source_subdir lisaac/luci-app-diskman \
@@ -85,6 +82,7 @@ export_source_subdir sbwml/openwrt_pkgs \
 # 包源由 scripts/import-m78-ipk.sh 从原始 IPK 精简生成。
 M78_LOCAL="$ROOT_DIR/packages/m78-x86"
 if [[ -d "$M78_LOCAL" ]]; then
+  bash "$ROOT_DIR/scripts/vendor-m78-zashboard.sh"
   rm -rf "$PKG_DIR/luci-app-m78accelerator"
   cp -a "$M78_LOCAL" "$PKG_DIR/luci-app-m78accelerator"
 fi
